@@ -23,9 +23,7 @@ The study focuses on how segmentation performance is affected by:
 - **DDRNet-23** – Best real-world performance
 - <img width="496" height="225" alt="image" src="https://github.com/user-attachments/assets/b72ead6f-1801-480f-9508-4e925038a47b" />
 - **SCTNet-B-Seg75** – Efficient and fast
-- **SCTNet-B-Seg100** – Best robustness under degradations
-- <img width="496" height="524" alt="image" src="https://github.com/user-attachments/assets/508b8947-f14e-465d-be44-02d8cfa6350f" />
-
+- **SCTNet-B-Seg100** – Best robustness under degradation.
 
 ---
 
@@ -38,9 +36,6 @@ The study focuses on how segmentation performance is affected by:
   - Brightness: 0.5, 0.6, 0.7
   - Contrast: 0.6, 0.7
   - <img width="1302" height="173" alt="image" src="https://github.com/user-attachments/assets/f20996ef-b47b-4435-9db5-388784137bbf" />
-  - <img width="1302" height="173" alt="image" src="https://github.com/user-attachments/assets/a7cd8e5a-fb90-4c25-b7ad-e03f224c69a7" />
-  - <img width="1302" height="173" alt="image" src="https://github.com/user-attachments/assets/4b9fe58e-fe59-4e97-818e-06c7893adb8f" />
-  - <img width="1302" height="173" alt="image" src="https://github.com/user-attachments/assets/6a984d6a-d360-40ce-8c7c-9675346b69cd" />
 
 ---
 
