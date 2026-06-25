@@ -48,9 +48,7 @@ The study focuses on how segmentation performance is affected by:
   - Rain
   - Snow (light, medium, heavy)
   - Different lighting conditions
-  - <img width="284" height="141" alt="image" src="https://github.com/user-attachments/assets/83c380b1-10d4-4d8f-bdec-e7ec264d10f9" />
-  - <img width="284" height="141" alt="image" src="https://github.com/user-attachments/assets/7e97cc7a-60cc-4b00-8ae4-e71c956ecbc1" />
-  - <img width="680" height="335" alt="image" src="https://github.com/user-attachments/assets/8a8ddfa2-2304-4b93-ae1d-3af1a6aec686" />
+  - <img width="1080" height="332" alt="image" src="https://github.com/user-attachments/assets/1c790e54-e3e5-4aa6-829b-bb0651b3381f" />
 
 ---
 
