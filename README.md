@@ -24,6 +24,8 @@ The study focuses on how segmentation performance is affected by:
 - <img width="496" height="225" alt="image" src="https://github.com/user-attachments/assets/b72ead6f-1801-480f-9508-4e925038a47b" />
 - **SCTNet-B-Seg75** – Efficient and fast
 - **SCTNet-B-Seg100** – Best robustness under degradation.
+- <img width="496" height="227" alt="image" src="https://github.com/user-attachments/assets/8e99352f-62b5-4c6c-bfa1-9b363182a9f5" />
+
 
 ---
 
@@ -84,6 +86,10 @@ The study focuses on how segmentation performance is affected by:
 <img width="1235" height="551" alt="image" src="https://github.com/user-attachments/assets/a83224b7-ea75-41e6-9a21-fc4a25a8f75f" />
 
 ---
+## Qualitative Segmentation Results
+<img width="1171" height="198" alt="image" src="https://github.com/user-attachments/assets/4d11aa22-be5e-4846-9c95-9ac3a5f8951a" />
+
+
 
 ## 🚀 How to Run
 
