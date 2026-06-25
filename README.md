@@ -21,8 +21,11 @@ The study focuses on how segmentation performance is affected by:
 
 ## 🧠 Models Used
 - **DDRNet-23** – Best real-world performance
+- <img width="496" height="225" alt="image" src="https://github.com/user-attachments/assets/b72ead6f-1801-480f-9508-4e925038a47b" />
 - **SCTNet-B-Seg75** – Efficient and fast
 - **SCTNet-B-Seg100** – Best robustness under degradations
+- <img width="496" height="524" alt="image" src="https://github.com/user-attachments/assets/508b8947-f14e-465d-be44-02d8cfa6350f" />
+
 
 ---
 
@@ -34,6 +37,10 @@ The study focuses on how segmentation performance is affected by:
 - Augmented using:
   - Brightness: 0.5, 0.6, 0.7
   - Contrast: 0.6, 0.7
+  - <img width="1302" height="173" alt="image" src="https://github.com/user-attachments/assets/f20996ef-b47b-4435-9db5-388784137bbf" />
+  - <img width="1302" height="173" alt="image" src="https://github.com/user-attachments/assets/a7cd8e5a-fb90-4c25-b7ad-e03f224c69a7" />
+  - <img width="1302" height="173" alt="image" src="https://github.com/user-attachments/assets/4b9fe58e-fe59-4e97-818e-06c7893adb8f" />
+  - <img width="1302" height="173" alt="image" src="https://github.com/user-attachments/assets/6a984d6a-d360-40ce-8c7c-9675346b69cd" />
 
 ---
 
@@ -44,6 +51,9 @@ The study focuses on how segmentation performance is affected by:
   - Rain
   - Snow (light, medium, heavy)
   - Different lighting conditions
+  - <img width="284" height="141" alt="image" src="https://github.com/user-attachments/assets/83c380b1-10d4-4d8f-bdec-e7ec264d10f9" />
+  - <img width="284" height="141" alt="image" src="https://github.com/user-attachments/assets/7e97cc7a-60cc-4b00-8ae4-e71c956ecbc1" />
+  - <img width="680" height="335" alt="image" src="https://github.com/user-attachments/assets/8a8ddfa2-2304-4b93-ae1d-3af1a6aec686" />
 
 ---
 
@@ -76,7 +86,7 @@ The study focuses on how segmentation performance is affected by:
 ---
 
 ## 🖼️ Example Results
-(You can add sample images here later)
+<img width="1235" height="551" alt="image" src="https://github.com/user-attachments/assets/a83224b7-ea75-41e6-9a21-fc4a25a8f75f" />
 
 ---
 
