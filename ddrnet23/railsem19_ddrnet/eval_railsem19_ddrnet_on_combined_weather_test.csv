@@ -1,0 +1,2 @@
+model,dataset,split,num_images,aAcc,mIoU,mAcc
+railsem19_ddrnet,combined_weather_dataset,test,2592,13.01197608311971,3.8272722424952783,15.620949787787108

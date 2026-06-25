@@ -1,0 +1,107 @@
+import torch
+
+from mmcv.runner import HOOKS, Hook
+from mmseg.datasets import build_dataset, build_dataloader
+
+
+def _mean_tensor(val):
+    """Convert tensor/list-of-tensors to a single mean tensor."""
+    if torch.is_tensor(val):
+        return val.mean()
+    if isinstance(val, (list, tuple)):
+        ts = [v.mean() for v in val if torch.is_tensor(v)]
+        if len(ts) == 0:
+            return None
+        return sum(ts) / len(ts)
+    return None
+
+
+@HOOKS.register_module()
+class ValLossEarlyStopHook(Hook):
+    """Compute MEAN validation loss (cross-entropy etc.) each interval epoch.
+
+    Logs:
+      runner.log_buffer.output['val.loss'] = mean_val_loss
+    """
+
+    def __init__(self,
+                 dataset_cfg,
+                 samples_per_gpu=1,
+                 workers_per_gpu=2,
+                 interval=1,
+                 num_batches=None,
+                 priority='LOW'):
+        self.dataset_cfg = dataset_cfg
+        self.samples_per_gpu = samples_per_gpu
+        self.workers_per_gpu = workers_per_gpu
+        self.interval = interval
+        self.num_batches = num_batches
+        self.priority = priority
+        self.val_loader = None
+
+    def before_run(self, runner):
+        dataset = build_dataset(self.dataset_cfg)
+        self.val_loader = build_dataloader(
+            dataset,
+            samples_per_gpu=self.samples_per_gpu,
+            workers_per_gpu=self.workers_per_gpu,
+            dist=False,
+            shuffle=False
+        )
+        runner.logger.info('[ValLossEarlyStopHook] Built val-loss dataloader.')
+
+    def after_train_epoch(self, runner):
+        if (runner.epoch + 1) % self.interval != 0:
+            return
+
+        model = runner.model
+        was_training = model.training
+        model.eval()
+
+        loss_sum = 0.0
+        n_samples = 0
+
+        with torch.no_grad():
+            for i, data in enumerate(self.val_loader):
+                # Optional limit for speed
+                if self.num_batches is not None and i >= self.num_batches:
+                    break
+
+                # Compute losses using the model's training forward (return_loss=True)
+                losses = model(return_loss=True, **data)
+
+                # Sum all "loss*" entries as mmseg does
+                batch_loss = None
+                for k, v in losses.items():
+                    if 'loss' not in k:
+                        continue
+                    t = _mean_tensor(v)
+                    if t is None:
+                        continue
+                    batch_loss = t if batch_loss is None else (batch_loss + t)
+
+                if batch_loss is None:
+                    continue
+
+                # infer batch size safely
+                img = data.get('img', None)
+                if torch.is_tensor(img):
+                    bs = img.size(0)
+                elif isinstance(img, (list, tuple)) and len(img) > 0 and torch.is_tensor(img[0]):
+                    bs = img[0].size(0)
+                else:
+                    bs = self.samples_per_gpu
+
+                loss_sum += float(batch_loss.item()) * bs
+                n_samples += bs
+
+        mean_loss = loss_sum / max(1, n_samples)
+
+        # log in the same place EarlyStoppingHook reads from
+        runner.log_buffer.output['val.loss'] = mean_loss
+        runner.log_buffer.ready = True
+
+        runner.logger.info(f'[ValLossEarlyStopHook] epoch={runner.epoch + 1} val_loss(mean)={mean_loss:.6f}')
+
+        if was_training:
+            model.train()

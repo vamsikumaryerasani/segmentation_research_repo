@@ -1,0 +1,289 @@
+#!/usr/bin/env python3
+"""
+Plot SCTNet-B-Seg75 MMseg training curves.
+
+Outputs:
+- training_curves.png
+- accuracy.png
+- loss.png
+
+Changes requested:
+- NO vertical blue marker lines
+- legend shown below in all 3 images
+"""
+
+import os
+import re
+import json
+import argparse
+import matplotlib.pyplot as plt
+
+
+def _to_percent_if_needed(x: float) -> float:
+    return x * 100.0 if x <= 1.5 else x
+
+
+def parse_json_log(json_path):
+    train_last = {}
+    val_metrics = {}
+    val_loss = {}
+    early_bad = {}
+
+    with open(json_path, "r", errors="ignore") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                d = json.loads(line)
+            except Exception:
+                continue
+
+            ep = d.get("epoch", None)
+            mode = d.get("mode", None)
+
+            if mode == "train" and ep is not None:
+                tl = d.get("decode.loss_ce", None)
+                ta = d.get("decode.acc_seg", None)
+                if tl is not None and ta is not None:
+                    train_last[int(ep)] = {
+                        "loss": float(tl),
+                        "acc": _to_percent_if_needed(float(ta)),
+                    }
+
+            if mode == "val" and ep is not None:
+                aAcc = d.get("aAcc", None)
+                mIoU = d.get("mIoU", None)
+                mAcc = d.get("mAcc", None)
+                if aAcc is not None or mIoU is not None or mAcc is not None:
+                    val_metrics[int(ep)] = {
+                        "aAcc": _to_percent_if_needed(float(aAcc)) if aAcc is not None else None,
+                        "mIoU": float(mIoU) if mIoU is not None else None,
+                        "mAcc": _to_percent_if_needed(float(mAcc)) if mAcc is not None else None,
+                    }
+
+                vloss = d.get("val.loss", None)
+                if vloss is not None:
+                    val_loss[int(ep)] = float(vloss)
+
+                bad = d.get("bad", None)
+                patience = d.get("patience", None)
+                if bad is not None and patience is not None:
+                    early_bad[int(ep)] = (int(bad), int(patience))
+
+    return train_last, val_loss, val_metrics, early_bad
+
+
+def parse_text_log(log_path):
+    last_train_loss_by_epoch = {}
+    last_train_acc_by_epoch = {}
+    val_loss_by_epoch = {}
+    val_aacc_by_epoch = {}
+    val_miou_by_epoch = {}
+    early_bad_by_epoch = {}
+
+    re_train = re.compile(
+        r"Epoch\s+\[(\d+)\]\[\d+/\d+\].*decode\.loss_ce:\s*([0-9.]+).*decode\.acc_seg:\s*([0-9.]+)"
+    )
+    re_val_metrics = re.compile(
+        r"Epoch\(val\)\s+\[(\d+)\]\[.*?\].*aAcc:\s*([0-9.]+).*mIoU:\s*([0-9.]+).*mAcc:\s*([0-9.]+)"
+    )
+    re_val_loss = re.compile(r"\[ValLossHook\].*epoch=(\d+).*val\.loss=([0-9.]+)")
+    re_early = re.compile(r"\[EarlyStopping\].*epoch=(\d+).*bad=(\d+)/(\d+)")
+
+    with open(log_path, "r", errors="ignore") as f:
+        for line in f:
+            m = re_train.search(line)
+            if m:
+                ep = int(m.group(1))
+                tl = float(m.group(2))
+                ta = _to_percent_if_needed(float(m.group(3)))
+                last_train_loss_by_epoch[ep] = tl
+                last_train_acc_by_epoch[ep] = ta
+                continue
+
+            m = re_val_loss.search(line)
+            if m:
+                ep = int(m.group(1))
+                vl = float(m.group(2))
+                val_loss_by_epoch[ep] = vl
+                continue
+
+            m = re_val_metrics.search(line)
+            if m:
+                ep = int(m.group(1))
+                aacc = _to_percent_if_needed(float(m.group(2)))
+                miou = float(m.group(3))
+                val_aacc_by_epoch[ep] = aacc
+                val_miou_by_epoch[ep] = miou
+                continue
+
+            m = re_early.search(line)
+            if m:
+                ep = int(m.group(1))
+                bad = int(m.group(2))
+                pat = int(m.group(3))
+                early_bad_by_epoch[ep] = (bad, pat)
+                continue
+
+    train_last = {
+        ep: {"loss": last_train_loss_by_epoch[ep], "acc": last_train_acc_by_epoch[ep]}
+        for ep in last_train_loss_by_epoch.keys()
+    }
+
+    val_loss = dict(val_loss_by_epoch)
+    val_metrics = {
+        ep: {"aAcc": val_aacc_by_epoch.get(ep), "mIoU": val_miou_by_epoch.get(ep), "mAcc": None}
+        for ep in set(val_aacc_by_epoch.keys()) | set(val_miou_by_epoch.keys())
+    }
+
+    return train_last, val_loss, val_metrics, early_bad_by_epoch
+
+
+def pick_best_epoch_from_miou(val_metrics):
+    best_ep = None
+    best_miou = None
+    for ep, d in val_metrics.items():
+        miou = d.get("mIoU", None)
+        if miou is None:
+            continue
+        if best_miou is None or miou > best_miou:
+            best_miou = miou
+            best_ep = ep
+    return best_ep, best_miou
+
+
+def plot_and_save(epochs, train_loss, train_acc, val_loss, val_acc, title, outdir,
+                  best_epoch=None, best_miou=None, early_bad=None):
+    os.makedirs(outdir, exist_ok=True)
+
+    # ---------------- Combined plot ----------------
+    fig, ax_loss = plt.subplots(figsize=(12, 8))
+    ax_acc = ax_loss.twinx()
+
+    l_train_acc, = ax_acc.plot(epochs, train_acc, linestyle=":", marker="o", label="Training Acc")
+    l_val_acc, = ax_acc.plot(epochs, val_acc, linestyle="-.", marker="x", label="Validation Acc")
+
+    l_train_loss, = ax_loss.plot(epochs, train_loss, linestyle="--", marker="^", label="Training Loss")
+    l_val_loss, = ax_loss.plot(epochs, val_loss, linestyle="-", marker="s", label="Validation Loss")
+
+    ax_loss.set_xlabel("Epoch")
+    ax_loss.set_ylabel("Loss")
+    ax_acc.set_ylabel("Accuracy [%]")
+    ax_loss.set_title(title)
+    ax_loss.grid(True, which="both", linestyle="--", alpha=0.3)
+
+    # text only, NO vertical lines
+    info_lines = []
+    if best_epoch is not None and best_miou is not None:
+        info_lines.append(f"Best mIoU: {best_miou:.2f} @ epoch {best_epoch}")
+
+    if early_bad:
+        last_ep = max(early_bad.keys())
+        bad, pat = early_bad[last_ep]
+        if bad >= pat:
+            info_lines.append(f"Early stop triggered @ epoch {last_ep}")
+        else:
+            info_lines.append(f"EarlyStop bad={bad}/{pat} (last seen @ epoch {last_ep})")
+
+    if info_lines:
+        ax_loss.text(
+            0.02, 0.98, "\n".join(info_lines),
+            transform=ax_loss.transAxes, va="top", ha="left", fontsize=11,
+            bbox=dict(boxstyle="round", fc="white", ec="none", alpha=0.75),
+        )
+
+    lines = [l_train_acc, l_val_acc, l_train_loss, l_val_loss]
+    labels = [l.get_label() for l in lines]
+    fig.legend(lines, labels, loc="upper center", bbox_to_anchor=(0.5, -0.08), ncol=2, frameon=False)
+    fig.tight_layout(rect=[0, 0.10, 1, 1])
+    fig.savefig(os.path.join(outdir, "training_curves.png"), dpi=200)
+    plt.close(fig)
+
+    # ---------------- Accuracy only ----------------
+    fig, ax = plt.subplots(figsize=(10, 6))
+    l1, = ax.plot(epochs, train_acc, linestyle=":", marker="o", label="Training Acc")
+    l2, = ax.plot(epochs, val_acc, linestyle="-.", marker="x", label="Validation Acc")
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Accuracy [%]")
+    ax.set_title(title.replace("Loss and Accuracy", "Accuracy"))
+    ax.grid(True, which="both", linestyle="--", alpha=0.3)
+
+    fig.legend([l1, l2], [l1.get_label(), l2.get_label()],
+               loc="upper center", bbox_to_anchor=(0.5, -0.05), ncol=2, frameon=False)
+    fig.tight_layout(rect=[0, 0.08, 1, 1])
+    fig.savefig(os.path.join(outdir, "accuracy.png"), dpi=200)
+    plt.close(fig)
+
+    # ---------------- Loss only ----------------
+    fig, ax = plt.subplots(figsize=(10, 6))
+    l1, = ax.plot(epochs, train_loss, linestyle="--", marker="^", label="Training Loss")
+    l2, = ax.plot(epochs, val_loss, linestyle="-", marker="s", label="Validation Loss")
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Loss")
+    ax.set_title(title.replace("Loss and Accuracy", "Loss"))
+    ax.grid(True, which="both", linestyle="--", alpha=0.3)
+
+    fig.legend([l1, l2], [l1.get_label(), l2.get_label()],
+               loc="upper center", bbox_to_anchor=(0.5, -0.05), ncol=2, frameon=False)
+    fig.tight_layout(rect=[0, 0.08, 1, 1])
+    fig.savefig(os.path.join(outdir, "loss.png"), dpi=200)
+    plt.close(fig)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--log", default=None, help="Path to .log file")
+    ap.add_argument("--json", default=None, help="Path to .log.json file (preferred)")
+    ap.add_argument("--label", default="SCTNet-B-Seg75 RailSem19 - Loss and Accuracy")
+    ap.add_argument("--outdir", default=".", help="Output directory")
+    args = ap.parse_args()
+
+    if args.json is None:
+        cand = [f for f in os.listdir(".") if f.endswith(".log.json")]
+        if cand:
+            args.json = sorted(cand)[-1]
+
+    if args.log is None:
+        cand = [f for f in os.listdir(".") if f.endswith(".log")]
+        if cand:
+            args.log = sorted(cand)[-1]
+
+    if args.json and os.path.isfile(args.json):
+        train_last, val_loss, val_metrics, early_bad = parse_json_log(args.json)
+    elif args.log and os.path.isfile(args.log):
+        train_last, val_loss, val_metrics, early_bad = parse_text_log(args.log)
+    else:
+        raise FileNotFoundError("Could not find log files. Provide --json or --log.")
+
+    epochs = sorted(set(train_last.keys()) & set(val_loss.keys()))
+    if not epochs:
+        epochs = sorted(train_last.keys())
+
+    train_loss_list = []
+    train_acc_list = []
+    val_loss_list = []
+    val_acc_list = []
+
+    for ep in epochs:
+        train_loss_list.append(train_last[ep]["loss"])
+        train_acc_list.append(train_last[ep]["acc"])
+        val_loss_list.append(val_loss.get(ep, float("nan")))
+        val_acc_list.append(val_metrics.get(ep, {}).get("aAcc", float("nan")))
+
+    best_ep, best_miou = pick_best_epoch_from_miou(val_metrics)
+
+    plot_and_save(
+        epochs, train_loss_list, train_acc_list, val_loss_list, val_acc_list,
+        title=args.label, outdir=args.outdir,
+        best_epoch=best_ep, best_miou=best_miou, early_bad=early_bad
+    )
+
+    print("[OK] Saved in:", os.path.abspath(args.outdir))
+    print(" - training_curves.png")
+    print(" - accuracy.png")
+    print(" - loss.png")
+
+
+if __name__ == "__main__":
+    main()

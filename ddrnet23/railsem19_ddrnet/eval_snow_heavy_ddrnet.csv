@@ -1,0 +1,8 @@
+model,dataset,split,num_images,aAcc,mIoU,mAcc
+Snow_Heavy 20 mm mm2 per hour,Different Lighting Conditions,test,414,61.71550658589976,46.23792996936141,62.874731165124
+Snow_Heavy 20 mm mm2 per hour,Fog Mist or Shallow Fog 500m Visibility,test,356,51.275819071223225,29.176799586198403,45.532195635259335
+Snow_Heavy 20 mm mm2 per hour,Moderate Fog 200m visibility,test,426,38.29298691010811,14.20036760002058,30.117003601903914
+Snow_Heavy 20 mm mm2 per hour,Rain_light 0.4 mm mm2 per hour,test,334,61.43654691958855,45.89184759061952,62.38230664074228
+Snow_Heavy 20 mm mm2 per hour,Snow_middle 4 mm mm2 per hour,test,378,94.52796411261988,89.21386211462142,93.94567888849456
+Snow_Heavy 20 mm mm2 per hour,Snow_Heavy 20 mm mm2 per hour,test,307,94.3089612532128,88.63036945299113,93.58419631864194
+Snow_Heavy 20 mm mm2 per hour,Snow_Light Less than 0.5 mm2 per hour,test,385,94.64256831577846,89.33875559235597,93.97317491302903

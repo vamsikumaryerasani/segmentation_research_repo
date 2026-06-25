@@ -1,0 +1,8 @@
+model,dataset,split,num_images,aAcc,mIoU,mAcc
+Different Lighting Conditions,Different Lighting Conditions,test,414,94.6072702822478,89.46012666584764,94.18588295391574
+Different Lighting Conditions,Fog Mist or Shallow Fog 500m Visibility,test,356,77.26975666003281,58.53754091276855,69.43089488980475
+Different Lighting Conditions,Moderate Fog 200m visibility,test,426,45.23793341408313,26.4262573352343,39.85182823173821
+Different Lighting Conditions,Rain_light 0.4 mm mm2 per hour,test,334,94.58074284170917,89.38658876934494,94.18713383936849
+Different Lighting Conditions,Snow_middle 4 mm mm2 per hour,test,378,49.1046910563474,28.944974326270323,48.55218442907239
+Different Lighting Conditions,Snow_Heavy 20 mm mm2 per hour,test,307,49.39422669550495,29.11043665190008,48.45250974799122
+Different Lighting Conditions,Snow_Light Less than 0.5 mm2 per hour,test,385,49.392654617111404,29.05269889527558,48.490276688716385

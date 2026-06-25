@@ -1,0 +1,8 @@
+dataset,aAcc,mIoU,mAcc
+Different Lighting conditions,0.9181,0.8019,0.8936
+Fog Mist or Shallow Fog 500m Visibility,0.9486,0.8989,0.9438
+Moderate Fog 200m visibility,0.935,0.8541,0.9064
+Rain_light 0.4 mm mm2 per hour,0.9173,0.7961,0.8912
+Snow_middle 4 mm mm2 per hour,0.6476000000000001,0.4533,0.6042000000000001
+Snow_Heavy 20 mm mm2 per hour,0.6509,0.45270000000000005,0.5952000000000001
+Snow_Light Less than 0.5 mm2 per hour,0.6487999999999999,0.4571,0.6053000000000001

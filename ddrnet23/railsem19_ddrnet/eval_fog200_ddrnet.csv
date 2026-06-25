@@ -1,0 +1,8 @@
+model,dataset,split,num_images,aAcc,mIoU,mAcc
+Moderate Fog 200m visibility,Different Lighting Conditions,test,414,87.00231008483593,69.81325205269906,82.90470306949572
+Moderate Fog 200m visibility,Fog Mist or Shallow Fog 500m Visibility,test,356,94.3194598294376,88.43843383458477,93.98041182964029
+Moderate Fog 200m visibility,Moderate Fog 200m visibility,test,426,94.55620000060175,89.22921103450814,94.09641841636179
+Moderate Fog 200m visibility,Rain_light 0.4 mm mm2 per hour,test,334,87.11180886822547,69.56080170106733,82.51556686057998
+Moderate Fog 200m visibility,Snow_middle 4 mm mm2 per hour,test,378,51.51625789662517,29.15948176029145,43.12796404959846
+Moderate Fog 200m visibility,Snow_Heavy 20 mm mm2 per hour,test,307,52.28050555002417,29.25803861184259,43.0653810252268
+Moderate Fog 200m visibility,Snow_Light Less than 0.5 mm2 per hour,test,385,51.731047196821734,29.303385083010642,43.09133361344139

@@ -1,0 +1,8 @@
+model,dataset,split,num_images,aAcc,mIoU,mAcc
+Fog Mist or Shallow Fog 500m Visibility,Different Lighting Conditions,test,414,91.37734215040713,80.47119141564949,89.19898489542605
+Fog Mist or Shallow Fog 500m Visibility,Fog Mist or Shallow Fog 500m Visibility,test,356,94.66622706209675,89.62002437094695,94.20328963584353
+Fog Mist or Shallow Fog 500m Visibility,Moderate Fog 200m visibility,test,426,92.87976502252856,83.54464548892902,89.0226875690931
+Fog Mist or Shallow Fog 500m Visibility,Rain_light 0.4 mm mm2 per hour,test,334,91.36100015240515,80.59375222441277,89.07380055107596
+Fog Mist or Shallow Fog 500m Visibility,Snow_middle 4 mm mm2 per hour,test,378,56.45240147908529,33.90598511868228,49.61786257723745
+Fog Mist or Shallow Fog 500m Visibility,Snow_Heavy 20 mm mm2 per hour,test,307,56.953259322076356,34.143685820219325,49.38280042999924
+Fog Mist or Shallow Fog 500m Visibility,Snow_Light Less than 0.5 mm2 per hour,test,385,56.735323621081065,34.265880206041246,49.756089287546224

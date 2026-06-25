@@ -1,0 +1,151 @@
+import os, glob, random, argparse
+import numpy as np
+import mmcv
+from mmseg.apis import init_segmentor, inference_segmentor
+
+# RailSem19 19-class color palette (RGB) (EXACT)
+RAILSEM19_PALETTE = [
+    [128, 64,128],  # 0: Road
+    [244, 35,232],  # 1: Sidewalk
+    [70, 70, 70],   # 2: Building
+    [102,102,156],  # 3: Wall
+    [190,153,153],  # 4: Fence
+    [153,153,153],  # 5: Pole
+    [250,170, 30],  # 6: Traffic Light
+    [220,220,  0],  # 7: Traffic Sign
+    [107,142, 35],  # 8: Vegetation
+    [152,251,152],  # 9: Terrain
+    [70,130,180],   #10: Sky
+    [220, 20, 60],  #11: Person
+    [255,  0,  0],  #12: Rider
+    [  0,  0,142],  #13: Car
+    [  0,  0, 70],  #14: Truck
+    [  0, 60,100],  #15: Bus
+    [  0, 80,100],  #16: Train
+    [  0,  0,230],  #17: Motorcycle
+    [119, 11, 32],  #18: Bicycle
+]
+
+NUM_CLASSES = 19
+IGNORE_LABEL = 255
+
+def list_images(root, exts=("png","jpg","jpeg","bmp","tif","tiff","webp")):
+    imgs = []
+    for e in exts:
+        imgs += glob.glob(os.path.join(root, "**", f"*.{e}"), recursive=True)
+    return sorted(imgs)
+
+def colorize_mask(mask, palette):
+    h, w = mask.shape
+    out = np.zeros((h, w, 3), dtype=np.uint8)
+    for i, c in enumerate(palette):
+        out[mask == i] = c
+    return out
+
+def to_grayscale(mask, num_classes=NUM_CLASSES):
+    """Map class ids [0..C-1] to grayscale [0..255]. Keep ignore=255 as 255."""
+    mask = mask.astype(np.int32)
+    gray = np.zeros_like(mask, dtype=np.uint8)
+
+    scale = 255.0 / float(num_classes - 1)
+    valid = (mask >= 0) & (mask < num_classes)
+    gray[valid] = np.clip(np.round(mask[valid] * scale), 0, 255).astype(np.uint8)
+
+    # keep ignore label bright (optional)
+    gray[mask == IGNORE_LABEL] = 255
+    return gray
+
+def find_gt_path(img_path, gt_dir):
+    """Try best-effort mapping: same basename, .png."""
+    base = os.path.splitext(os.path.basename(img_path))[0]
+    cand = os.path.join(gt_dir, base + ".png")
+    return cand if os.path.isfile(cand) else None
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("config")
+    ap.add_argument("checkpoint")
+    ap.add_argument("--in-dir", required=True)
+    ap.add_argument("--out-dir", required=True)
+    ap.add_argument("--gt-dir", default=None, help="Folder with GT masks (png). Optional.")
+    ap.add_argument("--max-images", type=int, default=10)
+    ap.add_argument("--seed", type=int, default=0)
+    # overlay weights like: 0.6*image + 0.4*mask
+    ap.add_argument("--img-weight", type=float, default=0.6)
+    args = ap.parse_args()
+
+    os.makedirs(args.out_dir, exist_ok=True)
+
+    imgs = list_images(args.in_dir)
+    if not imgs:
+        raise RuntimeError(f"No images found in {args.in_dir}")
+
+    random.seed(args.seed)
+    random.shuffle(imgs)
+    imgs = imgs[:args.max_images]
+
+    model = init_segmentor(args.config, args.checkpoint, device="cuda:0")
+    model.PALETTE = RAILSEM19_PALETTE
+
+    iw = float(args.img_weight)
+    mw = 1.0 - iw
+
+    print(f"Found {len(imgs)} images. Saving to: {args.out_dir}")
+    if args.gt_dir:
+        print(f"GT dir: {args.gt_dir}")
+    print(f"Overlay = {iw:.2f}*image + {mw:.2f}*mask")
+
+    for idx, img_path in enumerate(imgs, 1):
+        img_bgr = mmcv.imread(img_path)  # BGR uint8
+        result = inference_segmentor(model, img_path)
+        pred = result[0] if isinstance(result, (list, tuple)) else result
+        pred = pred.astype(np.uint8)
+
+        # pred color + gray
+        pred_rgb = colorize_mask(pred, RAILSEM19_PALETTE)
+        pred_bgr = pred_rgb[:, :, ::-1]
+        pred_gray = to_grayscale(pred)  # uint8 single-channel
+
+        overlay = (iw * img_bgr.astype(np.float32) + mw * pred_bgr.astype(np.float32)).astype(np.uint8)
+
+        # optional GT
+        gt_bgr = None
+        gt_gray = None
+        gt_path = None
+        if args.gt_dir:
+            gt_path = find_gt_path(img_path, args.gt_dir)
+            if gt_path:
+                gt = mmcv.imread(gt_path, flag="unchanged")
+                if gt.ndim == 3:
+                    gt = gt[:, :, 0]
+                gt = gt.astype(np.uint8)
+                gt_rgb = colorize_mask(gt, RAILSEM19_PALETTE)
+                gt_bgr = gt_rgb[:, :, ::-1]
+                gt_gray = to_grayscale(gt)
+
+        base = os.path.splitext(os.path.basename(img_path))[0]
+
+        # save files
+        mmcv.imwrite(pred_bgr, os.path.join(args.out_dir, f"{idx:02d}_{base}_pred_color.png"))
+        mmcv.imwrite(pred_gray, os.path.join(args.out_dir, f"{idx:02d}_{base}_pred_gray.png"))
+        mmcv.imwrite(overlay,  os.path.join(args.out_dir, f"{idx:02d}_{base}_overlay.png"))
+
+        if gt_bgr is not None:
+            mmcv.imwrite(gt_bgr,  os.path.join(args.out_dir, f"{idx:02d}_{base}_gt_color.png"))
+            mmcv.imwrite(gt_gray, os.path.join(args.out_dir, f"{idx:02d}_{base}_gt_gray.png"))
+
+            # 5-panel strip: orig | pred_gray | pred_color | gt_gray | gt_color
+            pred_gray_bgr = np.stack([pred_gray]*3, axis=2)
+            gt_gray_bgr   = np.stack([gt_gray]*3, axis=2)
+            strip = np.concatenate([img_bgr, pred_gray_bgr, pred_bgr, gt_gray_bgr, gt_bgr], axis=1)
+            mmcv.imwrite(strip, os.path.join(args.out_dir, f"{idx:02d}_{base}_strip.png"))
+        else:
+            # 3-panel strip: orig | pred_gray | pred_color
+            pred_gray_bgr = np.stack([pred_gray]*3, axis=2)
+            strip = np.concatenate([img_bgr, pred_gray_bgr, pred_bgr], axis=1)
+            mmcv.imwrite(strip, os.path.join(args.out_dir, f"{idx:02d}_{base}_strip.png"))
+
+        print(f"[{idx}/{len(imgs)}] {base} saved (gt: {'yes' if gt_bgr is not None else 'no'})")
+
+if __name__ == "__main__":
+    main()

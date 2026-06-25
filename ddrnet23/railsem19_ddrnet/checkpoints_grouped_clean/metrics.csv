@@ -1,0 +1,1 @@
+epoch,train_loss,train_acc,val_loss,val_acc,aAcc,mIoU,mAcc,best_val_loss,best_mIoU,early_stop_bad,val_images,val_batches

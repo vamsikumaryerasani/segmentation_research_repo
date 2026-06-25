@@ -1,0 +1,2 @@
+dataset,aAcc,mIoU,mAcc
+RailSem19 test,0.9658,0.8779,0.9301

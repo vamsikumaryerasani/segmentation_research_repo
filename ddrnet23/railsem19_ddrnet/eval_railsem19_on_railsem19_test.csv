@@ -1,0 +1,2 @@
+model,dataset,split,num_images,aAcc,mIoU,mAcc
+railsem19_19class,railsem19,test,2550,97.52785532829694,91.12490978950328,95.2043659579779

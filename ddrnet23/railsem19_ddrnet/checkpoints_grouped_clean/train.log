@@ -1,0 +1,1 @@
+2026-03-15 21:46:00,633 - mmseg - INFO - Starting training | monitor=val.loss rule=less patience=3 | train_images=43350 val_images=5100 train_bs=4 val_bs=16

@@ -1,0 +1,104 @@
+import math
+import torch
+from mmcv.runner.hooks import HOOKS, Hook
+
+from mmseg.datasets import build_dataset, build_dataloader
+
+
+@HOOKS.register_module()
+class ValLossEarlyStopHook(Hook):
+    """
+    Computes validation loss on a GT-enabled val dataloader and early-stops training.
+
+    Args:
+      dataset_cfg (dict): dataset config dict (must include pipeline with LoadAnnotations)
+      samples_per_gpu (int)
+      workers_per_gpu (int)
+      interval (int): run every N epochs
+      num_batches (int|None): if set, only evaluate this many batches for speed
+      patience (int): stop after N epochs without improvement
+      min_delta (float): required improvement
+    """
+
+    def __init__(self,
+                 dataset_cfg,
+                 samples_per_gpu=1,
+                 workers_per_gpu=2,
+                 interval=1,
+                 num_batches=None,
+                 patience=5,
+                 min_delta=0.0):
+        self.dataset_cfg = dataset_cfg
+        self.samples_per_gpu = samples_per_gpu
+        self.workers_per_gpu = workers_per_gpu
+        self.interval = interval
+        self.num_batches = num_batches
+        self.patience = patience
+        self.min_delta = min_delta
+
+        self.val_loader = None
+        self.best = None
+        self.bad_epochs = 0
+
+    def before_run(self, runner):
+        # Build dataset + dataloader once
+        dataset = build_dataset(self.dataset_cfg)
+        self.val_loader = build_dataloader(
+            dataset,
+            samples_per_gpu=self.samples_per_gpu,
+            workers_per_gpu=self.workers_per_gpu,
+            dist=False,
+            shuffle=False,
+            drop_last=False
+        )
+        runner.logger.info("[ValLossEarlyStopHook] Built val-loss dataloader.")
+
+    def after_train_epoch(self, runner):
+        epoch = runner.epoch + 1
+        if epoch % self.interval != 0:
+            return
+
+        model = runner.model
+        model.eval()
+
+        total_loss = 0.0
+        total_batches = 0
+
+        with torch.no_grad():
+            for i, data in enumerate(self.val_loader):
+                # MMDataParallel will scatter to GPU
+                losses = model(return_loss=True, **data)
+
+                loss = 0.0
+                for _, v in losses.items():
+                    if isinstance(v, torch.Tensor):
+                        loss = loss + v
+                    elif isinstance(v, (list, tuple)):
+                        loss = loss + sum([x for x in v if isinstance(x, torch.Tensor)])
+
+                total_loss += float(loss.item())
+                total_batches += 1
+
+                if self.num_batches is not None and total_batches >= self.num_batches:
+                    break
+
+        val_loss = total_loss / max(total_batches, 1)
+
+        # Log value
+        runner.logger.info(f"[ValLossEarlyStopHook] epoch={epoch} val_loss={val_loss:.6f}")
+
+        # Early stop logic (lower is better)
+        if self.best is None or (self.best - val_loss) > self.min_delta:
+            self.best = val_loss
+            self.bad_epochs = 0
+        else:
+            self.bad_epochs += 1
+            runner.logger.info(f"[ValLossEarlyStopHook] no improvement: {self.bad_epochs}/{self.patience}")
+
+        if self.bad_epochs >= self.patience:
+            runner.logger.info("[ValLossEarlyStopHook] Early stopping triggered.")
+            # Robust stop for EpochBasedRunner
+            try:
+                runner._max_epochs = runner.epoch + 1
+            except Exception:
+                pass
